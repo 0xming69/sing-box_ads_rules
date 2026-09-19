@@ -47,39 +47,52 @@ jobs:
           wait
           echo "All source files downloaded successfully."
 
-      - name: Clean and Format Rules
+      - name: Clean Rules and Build JSON Rule-Set
         run: |
-          echo "Cleaning rules for sing-box adguard compiler..."
+          echo "Extracting pure domain suffixes..."
 
-          # 1. 提取标准 AdGuard 域名规则
-          cat rules_raw/*.txt | \
-            grep -E '^\|\|[a-zA-Z0-9.-]+\^$' > rules_build/adguard_style.txt || true
+          # 1. 提取所有 ||domain^ 中的纯域名
+          grep -h -E '^\|\|[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}\^$' rules_raw/*.txt | \
+            sed -E 's/^\|\|(.*)\^$/\1/' > rules_build/raw_domains.txt || true
 
-          # 2. 转换 Hosts 格式为 ||domain^
-          cat rules_raw/*.txt | \
-            grep -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9.-]+' | \
-            awk '{print "||" $2 "^"}' | \
-            grep -v '||localhost^' | \
-            grep -v '||127.0.0.1^' | \
-            grep -v '||0.0.0.0^' >> rules_build/adguard_style.txt || true
+          # 2. 提取标准 Hosts 格式中的纯域名
+          grep -h -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}' rules_raw/*.txt | \
+            awk '{print $2}' >> rules_build/raw_domains.txt || true
 
-          # 3. 去重与计数
-          sort -u rules_build/adguard_style.txt > rules_build/cleaned_adblock.txt
-          echo "Final unique rules count: $(wc -l < rules_build/cleaned_adblock.txt)"
+          # 3. 严格清洗：去重、过滤本地回环、小写化
+          cat rules_build/raw_domains.txt | \
+            tr '[:upper:]' '[:lower:]' | \
+            grep -vE '^(localhost|broadcasthost|local|lan|internal)$' | \
+            sort -u > rules_build/domains.txt
+
+          echo "Total unique domain count: $(wc -l < rules_build/domains.txt)"
+
+          # 4. 生成 sing-box 标准 JSON 规则集
+          python3 -c '
+          import json
+
+          with open("rules_build/domains.txt", "r") as f:
+              domains = [line.strip() for line in f if line.strip()]
+
+          rule_set = {
+              "version": 2,
+              "rules": [
+                  {
+                      "domain_suffix": domains
+                  }
+              ]
+          }
+
+          with open("rules_build/adguard-dns.json", "w") as f:
+              json.dump(rule_set, f)
+          '
+          ls -lh rules_build/adguard-dns.json
 
       - name: Compile to Sing-box Binary Rule-set
         run: |
-          mkdir -p dist
-          echo "Checking cleaned rules file..."
-          ls -lh rules_build/
-          head -n 5 rules_build/cleaned_adblock.txt
-
-          echo "Compiling to binary srs using standard CLI..."
-          # 标准命令：直接传入输入源文本与 -o 目标路径
-          sing-box rule-set compile rules_build/cleaned_adblock.txt -o dist/adguard-dns.srs
-
-          echo "Compile finished, inspecting dist directory:"
-          ls -lh dist/
+          echo "Compiling JSON rule-set to binary SRS..."
+          sing-box rule-set compile rules_build/adguard-dns.json -o dist/adguard-dns.srs
+          ls -lh dist/adguard-dns.srs
 
       - name: Deploy to Release Branch
         uses: peaceiris/actions-gh-pages@v4
