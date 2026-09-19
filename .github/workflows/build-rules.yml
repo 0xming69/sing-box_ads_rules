@@ -74,8 +74,9 @@ jobs:
           ls -lh rules_build/
           head -n 5 rules_build/cleaned_adblock.txt
 
-          echo "Compiling to binary srs..."
-          sing-box rule-set compile --format adguard rules_build/cleaned_adblock.txt --output dist/adguard-dns.srs
+          echo "Compiling to binary srs using standard CLI..."
+          # 标准命令：直接传入输入源文本与 -o 目标路径
+          sing-box rule-set compile rules_build/cleaned_adblock.txt -o dist/adguard-dns.srs
 
           echo "Compile finished, inspecting dist directory:"
           ls -lh dist/
