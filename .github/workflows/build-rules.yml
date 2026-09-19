@@ -4,7 +4,7 @@ on:
   schedule:
     # 每天 UTC 时间 20:00（即北京时间次日凌晨 04:00）全自动更新
     - cron: '0 20 * * *'
-  workflow_dispatch: # 支持在 GitHub 页面随时手动点击执行
+  workflow_dispatch: # 支持手动测试执行
   push:
     branches:
       - main
@@ -51,12 +51,11 @@ jobs:
         run: |
           echo "Cleaning rules for sing-box adguard compiler..."
 
-          # 1. 提取所有标准 AdGuard 域名拦截规则（||domain.com^）
-          # 排除包含修饰符($)、CSS隐藏(##)、正则(/)和注释(!或#)的行
+          # 1. 提取标准 AdGuard 域名规则
           cat rules_raw/*.txt | \
             grep -E '^\|\|[a-zA-Z0-9.-]+\^$' > rules_build/adguard_style.txt || true
 
-          # 2. 提取标准 Hosts 格式（如 127.0.0.1 domain.com 或 0.0.0.0 domain.com）并转换为 ||domain.com^ 格式
+          # 2. 转换 Hosts 格式为 ||domain^
           cat rules_raw/*.txt | \
             grep -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9.-]+' | \
             awk '{print "||" $2 "^"}' | \
@@ -64,15 +63,21 @@ jobs:
             grep -v '||127.0.0.1^' | \
             grep -v '||0.0.0.0^' >> rules_build/adguard_style.txt || true
 
-          # 3. 全局去重与排序
+          # 3. 去重与计数
           sort -u rules_build/adguard_style.txt > rules_build/cleaned_adblock.txt
-
           echo "Final unique rules count: $(wc -l < rules_build/cleaned_adblock.txt)"
 
       - name: Compile to Sing-box Binary Rule-set
         run: |
-          echo "Compiling to binary srs format..."
-          sing-box rule-set compile --format adguard rules_build/cleaned_adblock.txt -o dist/adguard-dns.srs
+          mkdir -p dist
+          echo "Checking cleaned rules file..."
+          ls -lh rules_build/
+          head -n 5 rules_build/cleaned_adblock.txt
+
+          echo "Compiling to binary srs..."
+          sing-box rule-set compile --format adguard rules_build/cleaned_adblock.txt --output dist/adguard-dns.srs
+
+          echo "Compile finished, inspecting dist directory:"
           ls -lh dist/
 
       - name: Deploy to Release Branch
