@@ -1,0 +1,85 @@
+name: Build and Release Sing-box Rules
+
+on:
+  schedule:
+    # 每天 UTC 时间 20:00（即北京时间次日凌晨 04:00）全自动更新
+    - cron: '0 20 * * *'
+  workflow_dispatch: # 支持在 GitHub 页面随时手动点击执行
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-rules.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install sing-box
+        run: |
+          echo "Fetching latest sing-box release..."
+          TAG=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION=${TAG#v}
+          echo "Latest sing-box version: $VERSION"
+          curl -sSL -O "https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${VERSION}-linux-amd64.tar.gz"
+          tar -zxvf "sing-box-${VERSION}-linux-amd64.tar.gz"
+          sudo cp "sing-box-${VERSION}-linux-amd64/sing-box" /usr/local/bin/
+          sing-box version
+
+      - name: Download All Filter Lists
+        run: |
+          mkdir -p rules_raw rules_build dist
+
+          echo "Downloading filter lists in parallel..."
+          curl -sSL "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt" -o rules_raw/filter_1.txt &
+          curl -sSL "https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt" -o rules_raw/filter_2.txt &
+          curl -sSL "https://raw.githubusercontent.com/BlueSkyXN/AdGuardHomeRules/master/all.txt" -o rules_raw/bluesky_all.txt &
+          curl -sSL "https://raw.githubusercontent.com/hululu1068/AdGuard-Rule/main/rule/adgh.txt" -o rules_raw/hululu_adgh.txt &
+          curl -sSL "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt" -o rules_raw/anti_ad.txt &
+          curl -sSL "https://raw.githubusercontent.com/xndeye/adblock_list/refs/heads/release/dns.txt" -o rules_raw/xndeye_dns.txt &
+          curl -sSL "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt" -o rules_raw/heidai_lite.txt &
+          curl -sSL "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" -o rules_raw/awavenue.txt &
+          curl -sSL "https://raw.githubusercontent.com/BlueSkyXN/AdGuardHomeRules/master/skyrules.txt" -o rules_raw/bluesky_sky.txt &
+          wait
+          echo "All source files downloaded successfully."
+
+      - name: Clean and Format Rules
+        run: |
+          echo "Cleaning rules for sing-box adguard compiler..."
+
+          # 1. 提取所有标准 AdGuard 域名拦截规则（||domain.com^）
+          # 排除包含修饰符($)、CSS隐藏(##)、正则(/)和注释(!或#)的行
+          cat rules_raw/*.txt | \
+            grep -E '^\|\|[a-zA-Z0-9.-]+\^$' > rules_build/adguard_style.txt || true
+
+          # 2. 提取标准 Hosts 格式（如 127.0.0.1 domain.com 或 0.0.0.0 domain.com）并转换为 ||domain.com^ 格式
+          cat rules_raw/*.txt | \
+            grep -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9.-]+' | \
+            awk '{print "||" $2 "^"}' | \
+            grep -v '||localhost^' | \
+            grep -v '||127.0.0.1^' | \
+            grep -v '||0.0.0.0^' >> rules_build/adguard_style.txt || true
+
+          # 3. 全局去重与排序
+          sort -u rules_build/adguard_style.txt > rules_build/cleaned_adblock.txt
+
+          echo "Final unique rules count: $(wc -l < rules_build/cleaned_adblock.txt)"
+
+      - name: Compile to Sing-box Binary Rule-set
+        run: |
+          echo "Compiling to binary srs format..."
+          sing-box rule-set compile --format adguard rules_build/cleaned_adblock.txt -o dist/adguard-dns.srs
+          ls -lh dist/
+
+      - name: Deploy to Release Branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: release
+          keep_files: false
+          commit_message: "Automated update sing-box adblock rules: ${{ github.sha }}"
