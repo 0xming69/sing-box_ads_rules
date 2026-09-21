@@ -2,7 +2,7 @@ name: Build and Release Sing-Box Rules
 
 on:
   schedule:
-    - cron: '0 20 * * *'
+    - cron: '30 23 * * *'
   workflow_dispatch:
   push:
     branches:
@@ -33,7 +33,8 @@ jobs:
         run: |
           mkdir -p rules_raw rules_build dist
 
-          echo "Downloading filter lists in parallel..."
+          echo "Downloading upstream filter lists in parallel..."
+          # Existing upstream sources
           curl -sSL "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt" -o rules_raw/filter_1.txt &
           curl -sSL "https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt" -o rules_raw/filter_2.txt &
           curl -sSL "https://raw.githubusercontent.com/BlueSkyXN/AdGuardHomeRules/master/all.txt" -o rules_raw/bluesky_all.txt &
@@ -41,8 +42,26 @@ jobs:
           curl -sSL "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt" -o rules_raw/anti_ad.txt &
           curl -sSL "https://raw.githubusercontent.com/xndeye/adblock_list/refs/heads/release/dns.txt" -o rules_raw/xndeye_dns.txt &
           curl -sSL "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdnslite.txt" -o rules_raw/heidai_lite.txt &
-          curl -sSL "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" -o rules_raw/awavenue.txt &
           curl -sSL "https://raw.githubusercontent.com/BlueSkyXN/AdGuardHomeRules/master/skyrules.txt" -o rules_raw/bluesky_sky.txt &
+
+          # Newly added upstream sources
+          curl -sSL "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt" -o rules_raw/cats_dns.txt &
+          curl -sSL "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt" -o rules_raw/adguard_sdns.txt &
+          curl -sSL "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/MobileFilter/sections/adservers.txt" -o rules_raw/adguard_mobile_adservers.txt &
+          curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt" -o rules_raw/adguard_chinese.txt &
+          curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_Base/filter.txt" -o rules_raw/adguard_base.txt &
+          curl -sSL "https://raw.githubusercontent.com/cjx82630/cjxlist/master/cjx-annoyance.txt" -o rules_raw/cjx_annoyance.txt &
+          curl -sSL "https://easylist-downloads.adblockplus.org/easylist.txt" -o rules_raw/easylist.txt &
+          curl -sSL "https://easylist-downloads.adblockplus.org/easylistchina.txt" -o rules_raw/easylistchina.txt &
+          curl -sSL "https://easylist-downloads.adblockplus.org/easyprivacy.txt" -o rules_raw/easyprivacy.txt &
+          curl -sSL "https://raw.githubusercontent.com/damengzhu/banad/main/jiekouAD.txt" -o rules_raw/banad_jiekou.txt &
+          curl -sSL "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" -o rules_raw/awavenue.txt &
+          curl -sSL "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.mini.txt" -o rules_raw/hagezi_pro_mini.txt &
+          curl -sSL "https://abp.oisd.nl/basic/" -o rules_raw/oisd_basic.txt &
+          curl -sSL "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts" -o rules_raw/stevenblack_hosts.txt &
+          curl -sSL "https://someonewhocares.org/hosts/hosts" -o rules_raw/swc_hosts.txt &
+          curl -sSL "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt" -o rules_raw/heidai_adblockdns.txt &
+          
           wait
           echo "All source files downloaded successfully."
 
@@ -50,12 +69,12 @@ jobs:
         run: |
           echo "Extracting pure domain suffixes..."
 
-          # 1. Extract pure domains from AdGuard syntax (||domain^)
-          grep -h -E '^\|\|[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}\^$' rules_raw/*.txt | \
-            sed -E 's/^\|\|(.*)\^$/\1/' > rules_build/raw_domains.txt || true
+          # 1. Extract pure domains from AdGuard / ABP syntax (||domain^ or ||domain^$important...)
+          grep -h -E '^\|\|[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}\^' rules_raw/*.txt 2>/dev/null | \
+            sed -E 's/^\|\|([^/\^$]+).*/\1/' > rules_build/raw_domains.txt || true
 
           # 2. Extract domain names from hosts format (127.0.0.1 / 0.0.0.0)
-          grep -h -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}' rules_raw/*.txt | \
+          grep -h -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}' rules_raw/*.txt 2>/dev/null | \
             awk '{print $2}' >> rules_build/raw_domains.txt || true
 
           # 3. Standardize domains: lowercase, drop loopback/local domains, sort & deduplicate
