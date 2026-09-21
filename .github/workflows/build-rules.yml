@@ -1,10 +1,9 @@
-name: Build and Release Sing-box Rules
+name: Build and Release Sing-Box Rules
 
 on:
   schedule:
-    # 每天 UTC 时间 20:00（即北京时间次日凌晨 04:00）全自动更新
     - cron: '0 20 * * *'
-  workflow_dispatch: # 支持手动测试执行
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -16,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install sing-box
@@ -30,7 +29,7 @@ jobs:
           sudo cp "sing-box-${VERSION}-linux-amd64/sing-box" /usr/local/bin/
           sing-box version
 
-      - name: Download All Filter Lists
+      - name: Download filter lists
         run: |
           mkdir -p rules_raw rules_build dist
 
@@ -47,19 +46,19 @@ jobs:
           wait
           echo "All source files downloaded successfully."
 
-      - name: Clean Rules and Build JSON Rule-Set
+      - name: Clean rules and build JSON rule-set
         run: |
           echo "Extracting pure domain suffixes..."
 
-          # 1. 提取所有 ||domain^ 中的纯域名
+          # 1. Extract pure domains from AdGuard syntax (||domain^)
           grep -h -E '^\|\|[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}\^$' rules_raw/*.txt | \
             sed -E 's/^\|\|(.*)\^$/\1/' > rules_build/raw_domains.txt || true
 
-          # 2. 提取标准 Hosts 格式中的纯域名
+          # 2. Extract domain names from hosts format (127.0.0.1 / 0.0.0.0)
           grep -h -E '^(127\.0\.0\.1|0\.0\.0\.0)[[:space:]]+[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}' rules_raw/*.txt | \
             awk '{print $2}' >> rules_build/raw_domains.txt || true
 
-          # 3. 严格清洗：去重、过滤本地回环、小写化
+          # 3. Standardize domains: lowercase, drop loopback/local domains, sort & deduplicate
           cat rules_build/raw_domains.txt | \
             tr '[:upper:]' '[:lower:]' | \
             grep -vE '^(localhost|broadcasthost|local|lan|internal)$' | \
@@ -67,7 +66,7 @@ jobs:
 
           echo "Total unique domain count: $(wc -l < rules_build/domains.txt)"
 
-          # 4. 生成 sing-box 标准 JSON 规则集
+          # 4. Generate standard sing-box JSON rule-set
           python3 -c '
           import json
 
@@ -83,18 +82,18 @@ jobs:
               ]
           }
 
-          with open("rules_build/adguard-dns.json", "w") as f:
-              json.dump(rule_set, f)
+          with open("dist/adguard-dns.json", "w", encoding="utf-8") as f:
+              json.dump(rule_set, f, indent=2)
           '
-          ls -lh rules_build/adguard-dns.json
+          ls -lh dist/adguard-dns.json
 
-      - name: Compile to Sing-box Binary Rule-set
+      - name: Compile to binary rule-set (.srs)
         run: |
           echo "Compiling JSON rule-set to binary SRS..."
-          sing-box rule-set compile rules_build/adguard-dns.json -o dist/adguard-dns.srs
+          sing-box rule-set compile dist/adguard-dns.json -o dist/adguard-dns.srs
           ls -lh dist/adguard-dns.srs
 
-      - name: Deploy to Release Branch
+      - name: Deploy to release branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
