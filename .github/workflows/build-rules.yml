@@ -45,7 +45,6 @@ jobs:
           curl -sSL "https://raw.githubusercontent.com/BlueSkyXN/AdGuardHomeRules/master/skyrules.txt" -o rules_raw/bluesky_sky.txt &
 
           # Newly added upstream sources
-          curl -sSL "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt" -o rules_raw/adguard_sdns.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/MobileFilter/sections/adservers.txt" -o rules_raw/adguard_mobile_adservers.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt" -o rules_raw/adguard_chinese.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_Base/filter.txt" -o rules_raw/adguard_base.txt &
