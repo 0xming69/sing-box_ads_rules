@@ -45,19 +45,11 @@ jobs:
           curl -sSL "https://raw.githubusercontent.com/BlueSkyXN/AdGuardHomeRules/master/skyrules.txt" -o rules_raw/bluesky_sky.txt &
 
           # Newly added upstream sources
-          curl -sSL "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt" -o rules_raw/cats_dns.txt &
           curl -sSL "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt" -o rules_raw/adguard_sdns.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/MobileFilter/sections/adservers.txt" -o rules_raw/adguard_mobile_adservers.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt" -o rules_raw/adguard_chinese.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_Base/filter.txt" -o rules_raw/adguard_base.txt &
           curl -sSL "https://easylist-downloads.adblockplus.org/easylistchina.txt" -o rules_raw/easylistchina.txt &
-          curl -sSL "https://raw.githubusercontent.com/damengzhu/banad/main/jiekouAD.txt" -o rules_raw/banad_jiekou.txt &
-          curl -sSL "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" -o rules_raw/awavenue.txt &
-          curl -sSL "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.mini.txt" -o rules_raw/hagezi_pro_mini.txt &
-          curl -sSL "https://abp.oisd.nl/basic/" -o rules_raw/oisd_basic.txt &
-          curl -sSL "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts" -o rules_raw/stevenblack_hosts.txt &
-          curl -sSL "https://someonewhocares.org/hosts/hosts" -o rules_raw/swc_hosts.txt &
-          curl -sSL "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt" -o rules_raw/heidai_adblockdns.txt &
           
           wait
           echo "All source files downloaded successfully."
