@@ -50,10 +50,7 @@ jobs:
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/MobileFilter/sections/adservers.txt" -o rules_raw/adguard_mobile_adservers.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt" -o rules_raw/adguard_chinese.txt &
           curl -sSL "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_Base/filter.txt" -o rules_raw/adguard_base.txt &
-          curl -sSL "https://raw.githubusercontent.com/cjx82630/cjxlist/master/cjx-annoyance.txt" -o rules_raw/cjx_annoyance.txt &
-          curl -sSL "https://easylist-downloads.adblockplus.org/easylist.txt" -o rules_raw/easylist.txt &
           curl -sSL "https://easylist-downloads.adblockplus.org/easylistchina.txt" -o rules_raw/easylistchina.txt &
-          curl -sSL "https://easylist-downloads.adblockplus.org/easyprivacy.txt" -o rules_raw/easyprivacy.txt &
           curl -sSL "https://raw.githubusercontent.com/damengzhu/banad/main/jiekouAD.txt" -o rules_raw/banad_jiekou.txt &
           curl -sSL "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt" -o rules_raw/awavenue.txt &
           curl -sSL "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.mini.txt" -o rules_raw/hagezi_pro_mini.txt &
